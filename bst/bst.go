@@ -25,14 +25,16 @@ type node struct {
 	left  *node
 	right *node
 	// if tree needs to be traversed add parent node to increase performance
+	parent *node
 
 	depth int
 }
 
-func newNode(key int, depth int) *node {
+func newNode(key int, depth int, parent *node) *node {
 	n := new(node)
 	n.key = key
 	n.depth = depth
+	n.parent = parent
 	return n
 }
 
@@ -107,17 +109,17 @@ func (t *Tree) DeepestNodes() ([]int, int, error) {
 // Insert insert new key into BST if key already exists error is returned
 func (t *Tree) Insert(key int) error {
 	if t.Empty() {
-		t.root = newNode(key, 0)
+		t.root = newNode(key, 0, nil)
 		return nil
 	}
 	node := t.root
 	for {
 		var leftNode bool
 		parent := node
-		if node.key > key {
+		if key < node.key {
 			node = node.left
 			leftNode = true
-		} else if node.key < key {
+		} else if key > node.key {
 			node = node.right
 			leftNode = false
 		} else {
@@ -127,13 +129,86 @@ func (t *Tree) Insert(key int) error {
 
 		if node == nil {
 			if leftNode {
-				parent.left = newNode(key, parent.depth+1)
+				parent.left = newNode(key, parent.depth+1, parent)
 				break
 			} else {
-				parent.right = newNode(key, parent.depth+1)
+				parent.right = newNode(key, parent.depth+1, parent)
 				break
 			}
 		}
 	}
 	return nil
+}
+
+func (t *Tree) Find(key int) (*node, bool) {
+	node := t.root
+	for node != nil {
+		if key < node.key {
+			node = node.left
+		} else if key > node.key {
+			node = node.right
+		} else {
+
+			return node, true
+		}
+	}
+	return nil, false
+}
+func (t *Tree) ToSlice() []int {
+	if t.Empty() {
+		return []int{}
+	}
+	slice := []int{}
+	queue := []*node{t.root}
+	for len(queue) != 0 {
+		front := queue[0]
+		queue = queue[1:] // remove first element
+		slice = append(slice, front.key)
+		if front.left != nil {
+			queue = append(queue, front.left)
+		}
+		if front.right != nil {
+			queue = append(queue, front.right)
+		}
+	}
+	return slice
+}
+
+func (t *Tree) Delete(key int) {
+	node, found := t.Find(key)
+	if !found {
+		return
+	}
+
+	if node.right != nil {
+		child := node.right
+		if node.parent.left == node {
+			node.parent.left = child
+		} else if node.parent.right == node {
+			node.parent.right = child
+		}
+
+		// insert left children back into tree
+		for {
+			if child.left != nil {
+				child = child.left
+			} else {
+				child.left = node.left
+				return
+			}
+		}
+	} else if node.left != nil {
+		child := node.left
+		if node.parent.right == node {
+			node.parent.right = child
+		} else if node.parent.left == node {
+			node.parent.left = child
+		}
+	} else { // child is a leaf
+		if node.parent.right == node {
+			node.parent.right = nil
+		} else {
+			node.parent.left = nil
+		}
+	}
 }
